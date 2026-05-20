@@ -1,0 +1,54 @@
+  <!-- ─────────────────────────────────────────────────────────────
+       ez-rapp Electron patches — applied on top of the upstream
+       RAPP Brainstem index.html. The grail UI is locked at
+       ~/.brainstem/src/rapp_brainstem/index.html; we vendor a copy
+       at public/brainstem-shell.html and apply our Electron-specific
+       fixes WITHOUT touching the original. To refresh from upstream,
+       run scripts/sync-brainstem-shell.sh — it re-injects this block.
+       ─────────────────────────────────────────────────────────── -->
+  <base href="http://127.0.0.1:7071/">
+  <script>
+  (() => {
+    // The brainstem JS uses relative paths (fetch("/chat"), XHR to
+    // "/agents", etc). When this HTML loads from file:// inside the
+    // Electron window, those relative paths resolve to file:/// and
+    // never hit the brainstem. Force them to localhost:7071.
+    const BASE = "http://127.0.0.1:7071";
+    const _f = window.fetch.bind(window);
+    window.fetch = (input, init) => {
+      if (typeof input === "string" && input.startsWith("/")) input = BASE + input;
+      else if (input instanceof Request && input.url.startsWith("file://")) {
+        const u = new URL(input.url);
+        input = new Request(BASE + u.pathname + u.search, input);
+      }
+      return _f(input, init);
+    };
+    const _open = window.XMLHttpRequest.prototype.open;
+    window.XMLHttpRequest.prototype.open = function(method, url, ...rest) {
+      if (typeof url === "string" && url.startsWith("/")) url = BASE + url;
+      return _open.call(this, method, url, ...rest);
+    };
+  })();
+  </script>
+  <style>
+  /* macOS traffic-light room — Electron's titleBarStyle "hiddenInset"
+     puts the close/min/zoom buttons at top-left (~14px). Shift the
+     brainstem header right so the buttons sit clear of the logo. */
+  body > header {
+    padding-left: 92px !important;
+    -webkit-app-region: drag;
+  }
+  /* Anything interactive inside the chrome must opt out of drag. */
+  body > header button,
+  body > header a,
+  body > header input,
+  body > header select,
+  body > header [role="button"],
+  body > header [tabindex],
+  body > header .controls,
+  body > header .controls *,
+  button, input, textarea, select, a, [role="button"] {
+    -webkit-app-region: no-drag;
+  }
+  </style>
+  <!-- /ez-rapp Electron patches ─────────────────────────────────── -->

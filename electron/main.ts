@@ -53,7 +53,24 @@ supervisor.on("state", (s) => {
 function promoteToBrainstemUI(): void {
   if (promoted || !win || win.isDestroyed()) return;
   promoted = true;
-  void win.loadURL(BRAINSTEM_URL);
+  // Instead of navigating to http://127.0.0.1:7071/ (the brainstem's
+  // own served HTML), we load our vendored clone at public/brainstem-
+  // shell.html. The clone is the upstream UI with an Electron-specific
+  // patch block injected in <head> — fixes things like the macOS
+  // traffic-light overlap and makes the header draggable. All XHR/fetch
+  // calls in the patch are rewritten to go to localhost:7071 so the
+  // brainstem stays the API source of truth.
+  //
+  // Why this layout: rapp-installer's index.html is sacred — we never
+  // touch the original on disk. Our clone in public/brainstem-shell.html
+  // is the Electron view; refresh it from upstream via
+  //   curl http://127.0.0.1:7071/ > public/brainstem-shell.html
+  // then re-apply the patch block at the top of <head>.
+  const shellPath = process.env.ELECTRON_RENDERER_URL
+    ? `${process.env.ELECTRON_RENDERER_URL}/brainstem-shell.html`
+    : null;
+  if (shellPath) void win.loadURL(shellPath);
+  else void win.loadFile(join(__dirname, "../renderer/brainstem-shell.html"));
 }
 
 async function ensureRunningAndReady(kind?: InstallerKind): Promise<{ ok: boolean; error?: string }> {
