@@ -1,20 +1,25 @@
-import type { BootstrapState } from "@shared/ipc-contract";
+import type { BootstrapState, InstallerKind } from "@shared/ipc-contract";
 import { type ReactElement } from "react";
 
 const STEP_LABEL: Record<BootstrapState["step"], string> = {
-  "checking":          "Checking your setup",
-  "needs-install":     "First-time setup",
-  "installing-python": "Installing Python",
-  "cloning-repo":      "Downloading the brainstem",
-  "creating-venv":     "Creating a Python environment",
-  "installing-deps":   "Installing dependencies",
-  "starting":          "Starting the brainstem",
-  "ready":             "Ready",
-  "error":             "Something went wrong",
+  "checking":             "Checking your setup",
+  "needs-install":        "First-time setup",
+  "needs-platform-pick":  "Pick your platform",
+  "installing-python":    "Installing Python",
+  "cloning-repo":         "Downloading the brainstem",
+  "creating-venv":        "Creating a Python environment",
+  "installing-deps":      "Installing dependencies",
+  "starting":             "Starting the brainstem",
+  "ready":                "Ready",
+  "error":                "Something went wrong",
 };
 
-export function BootstrapScreen({ state, onInstall }: { state: BootstrapState; onInstall: () => void }): ReactElement {
-  const busy = state.step !== "needs-install" && state.step !== "error" && state.step !== "ready";
+export function BootstrapScreen({ state, onInstall }: { state: BootstrapState; onInstall: (kind?: InstallerKind) => void }): ReactElement {
+  const busy = state.step !== "needs-install"
+    && state.step !== "needs-platform-pick"
+    && state.step !== "error"
+    && state.step !== "ready";
+
   return (
     <div className="h-screen w-screen flex flex-col">
       <div className="h-10 drag-region bg-surface-0 border-b border-line-subtle" />
@@ -36,18 +41,36 @@ export function BootstrapScreen({ state, onInstall }: { state: BootstrapState; o
               </div>
             </div>
             {state.detail && (
-              <div className="text-ink-3 text-[11px] font-mono break-all border-t border-line-subtle pt-2">
+              <div className="text-ink-3 text-[11px] break-words border-t border-line-subtle pt-2">
                 {state.detail}
               </div>
             )}
-            {state.error && (
+            {state.error && state.step !== "needs-platform-pick" && (
               <div className="text-rose-400 text-xs border-t border-line-subtle pt-2">{state.error}</div>
             )}
           </div>
 
+          {state.step === "needs-platform-pick" && state.options && (
+            <div className="space-y-2">
+              {state.options.map((opt) => (
+                <button
+                  key={opt.kind}
+                  onClick={() => onInstall(opt.kind)}
+                  className="w-full px-4 py-3 bg-surface-2 hover:bg-surface-3 border border-line-base hover:border-accent rounded-lg text-left transition-colors group"
+                >
+                  <div className="text-ink-0 text-sm font-medium group-hover:text-accent transition-colors">{opt.label}</div>
+                  <div className="text-ink-3 text-[11px] mt-0.5">{opt.hint}</div>
+                </button>
+              ))}
+              <p className="text-ink-3 text-[10px] pt-1">
+                Not sure? macOS or Linux uses bash; Windows uses PowerShell.
+              </p>
+            </div>
+          )}
+
           {state.step === "needs-install" && (
             <button
-              onClick={onInstall}
+              onClick={() => onInstall()}
               className="w-full px-4 py-2.5 bg-accent hover:bg-accent-hover rounded-lg text-white text-sm font-medium transition-colors"
             >
               Install (1–2 minutes)
@@ -55,7 +78,7 @@ export function BootstrapScreen({ state, onInstall }: { state: BootstrapState; o
           )}
           {state.step === "error" && (
             <button
-              onClick={onInstall}
+              onClick={() => onInstall()}
               className="w-full px-4 py-2.5 bg-surface-2 hover:bg-surface-3 border border-line-base rounded-lg text-ink-0 text-sm font-medium transition-colors"
             >
               Try again

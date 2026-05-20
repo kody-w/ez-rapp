@@ -1,5 +1,5 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { BootstrapState, ChatRequest, ChatTurn, EzRappBridge, SendStatusEvent } from "@shared/ipc-contract";
+import type { BootstrapState, ChatRequest, ChatTurn, EzRappBridge, InstallerKind, SendStatusEvent } from "@shared/ipc-contract";
 
 const bridge: EzRappBridge = {
   bootstrap: {
@@ -9,7 +9,8 @@ const bridge: EzRappBridge = {
       ipcRenderer.on("bootstrap:state", listener);
       return () => ipcRenderer.removeListener("bootstrap:state", listener);
     },
-    install: () => ipcRenderer.invoke("bootstrap:install"),
+    install: (kind?: InstallerKind) => ipcRenderer.invoke("bootstrap:install", kind),
+    detectKind: () => ipcRenderer.invoke("bootstrap:detectKind"),
   },
   brainstem: {
     health: () => ipcRenderer.invoke("brainstem:health"),

@@ -1,5 +1,5 @@
 import { useEffect, useState, type ReactElement } from "react";
-import type { BootstrapState, HealthResult } from "@shared/ipc-contract";
+import type { BootstrapState, HealthResult, InstallerKind } from "@shared/ipc-contract";
 import { ChatScreen } from "./components/ChatScreen";
 import { BootstrapScreen } from "./components/BootstrapScreen";
 import { LoginGate } from "./components/LoginGate";
@@ -29,8 +29,13 @@ export function App(): ReactElement {
   const needsInstall = !installed && bootstrap.step !== "ready";
   const needsAuth = health.ok && health.authStatus === "unauthenticated";
 
-  if (needsInstall && bootstrap.step !== "ready") {
-    return <BootstrapScreen state={bootstrap} onInstall={() => void window.ezrapp.bootstrap.install()} />;
+  if (needsInstall) {
+    return (
+      <BootstrapScreen
+        state={bootstrap}
+        onInstall={(kind?: InstallerKind) => void window.ezrapp.bootstrap.install(kind)}
+      />
+    );
   }
   if (needsAuth) {
     return <LoginGate onSignedIn={async () => setHealth(await window.ezrapp.brainstem.health())} />;

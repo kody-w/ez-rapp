@@ -11,11 +11,26 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { EventEmitter } from "node:events";
-import type { BootstrapState, BootstrapStep } from "@shared/ipc-contract";
+import type { BootstrapState, BootstrapStep, InstallerKind } from "@shared/ipc-contract";
 import { BRAINSTEM_PY, REQUIREMENTS_FILE, VENV_PYTHON } from "./paths";
 
 const INSTALL_URL_BASH = "https://kody-w.github.io/rapp-installer/install.sh";
 const INSTALL_URL_PS1 = "https://raw.githubusercontent.com/kody-w/rapp-installer/main/install.ps1";
+
+/**
+ * Map the running OS to the canonical one-liner the rapp-installer
+ * publishes. Returns null when we can't guess (rare — embedded Linux
+ * builds, future platforms, weird Electron forks). The renderer falls
+ * back to a manual platform picker in that case.
+ */
+export function detectInstallerKind(): InstallerKind | null {
+  if (process.platform === "darwin" || process.platform === "linux") return "posix";
+  if (process.platform === "win32") return "windows";
+  // FreeBSD / OpenBSD / SunOS / AIX etc. — bash is usually available.
+  // We still return null so the user picks explicitly; we don't want to
+  // run a Linux script on a system that needs a different python source.
+  return null;
+}
 
 export class Bootstrap extends EventEmitter {
   private state: BootstrapState = { step: "checking", message: "Checking your setup…" };
@@ -27,14 +42,30 @@ export class Bootstrap extends EventEmitter {
     return existsSync(BRAINSTEM_PY) && existsSync(VENV_PYTHON) && existsSync(REQUIREMENTS_FILE);
   }
 
-  async run(): Promise<{ ok: boolean; error?: string }> {
+  async run(kind?: InstallerKind): Promise<{ ok: boolean; error?: string }> {
     if (this.isInstalled()) {
       this.set({ step: "ready", message: "Ready." });
       return { ok: true };
     }
+    // Auto-detect first; if it failed and the renderer hasn't picked one
+    // yet, surface the platform picker. The renderer calls run() again
+    // with an explicit kind once the user chooses.
+    const resolved = kind ?? detectInstallerKind();
+    if (!resolved) {
+      this.set({
+        step: "needs-platform-pick",
+        message: "Tell us about your computer.",
+        detail: "We couldn't auto-detect which installer to run. Pick the one that matches your OS and we'll do the rest.",
+        options: [
+          { kind: "posix",   label: "macOS or Linux",         hint: "Uses the bash one-liner from rapp-installer." },
+          { kind: "windows", label: "Windows (10 or later)",  hint: "Uses the PowerShell one-liner from rapp-installer." },
+        ],
+      });
+      return { ok: false, error: "platform-pick" };
+    }
     this.set({ step: "needs-install", message: "Setting up the brainstem on your machine…", detail: "First-time setup takes 1–2 minutes." });
     try {
-      await this.runInstaller();
+      await this.runInstaller(resolved);
       if (!this.isInstalled()) throw new Error("installer ran but ~/.brainstem/ is incomplete");
       this.set({ step: "ready", message: "Ready." });
       return { ok: true };
@@ -50,25 +81,15 @@ export class Bootstrap extends EventEmitter {
     this.emit("state", this.state);
   }
 
-  private runInstaller(): Promise<void> {
+  private runInstaller(kind: InstallerKind): Promise<void> {
     return new Promise((resolve, reject) => {
-      // OS detection — ez-rapp picks the right canonical one-liner so
-      // the user gets the same outcome whether they run this from a
-      // terminal or click our install button. Same files on disk either
-      // way, so the two paths are interchangeable forever after.
-      const isWin = process.platform === "win32";
-      const isMacOrLinux = process.platform === "darwin" || process.platform === "linux";
-      if (!isWin && !isMacOrLinux) {
-        reject(new Error(`unsupported platform: ${process.platform}`));
-        return;
-      }
       // Tell install.sh / install.ps1 to bring the kernel down to disk
       // but NOT to auto-launch the brainstem at the end — we do that
       // ourselves through the supervisor so the chat happens inside this
       // window, not in a browser.
       const env = { ...process.env, RAPP_INSTALLER_NO_LAUNCH: "1" };
 
-      const child = isWin
+      const child = kind === "windows"
         ? spawn("powershell.exe", [
             "-NoProfile", "-ExecutionPolicy", "Bypass",
             "-Command", `irm ${INSTALL_URL_PS1} | iex`,

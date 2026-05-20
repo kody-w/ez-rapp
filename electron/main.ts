@@ -1,11 +1,11 @@
 import { app, BrowserWindow, ipcMain, shell } from "electron";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
-import { Bootstrap } from "./bootstrap";
+import { Bootstrap, detectInstallerKind } from "./bootstrap";
 import { BrainstemSupervisor } from "./brainstem-supervisor";
 import { ThreadStore } from "./thread-store";
 import * as client from "./brainstem-client";
-import type { BootstrapState, ChatRequest, SendPhase } from "@shared/ipc-contract";
+import type { BootstrapState, ChatRequest, InstallerKind, SendPhase } from "@shared/ipc-contract";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -42,12 +42,12 @@ supervisor.on("state", (s) => {
   }
 });
 
-async function ensureRunningAndReady(): Promise<{ ok: boolean; error?: string }> {
+async function ensureRunningAndReady(kind?: InstallerKind): Promise<{ ok: boolean; error?: string }> {
   if (bootstrap.isInstalled()) {
     if (supervisor.getState() !== "ready" && supervisor.getState() !== "starting") supervisor.start();
     return { ok: true };
   }
-  const r = await bootstrap.run();
+  const r = await bootstrap.run(kind);
   if (!r.ok) return r;
   supervisor.start();
   return { ok: true };
@@ -81,7 +81,8 @@ function createWindow(): void {
 // ── IPC handlers ───────────────────────────────────────────────────────
 
 ipcMain.handle("bootstrap:status", () => bootstrapState);
-ipcMain.handle("bootstrap:install", async () => ensureRunningAndReady());
+ipcMain.handle("bootstrap:install", async (_e, kind?: InstallerKind) => ensureRunningAndReady(kind));
+ipcMain.handle("bootstrap:detectKind", () => detectInstallerKind());
 
 ipcMain.handle("brainstem:health", async () => {
   const r = await client.health();
