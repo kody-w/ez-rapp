@@ -1,0 +1,343 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ez-rapp — Plain-English AI on your laptop</title>
+  <meta name="description" content="Download ez-rapp: the friendliest way to run a local AI on your computer. No terminal, no API keys, no command line. Just download, sign in with GitHub, and chat." />
+  <meta property="og:title" content="ez-rapp — Plain-English AI on your laptop" />
+  <meta property="og:description" content="Download ez-rapp: no terminal, no API keys, just chat." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://kody-w.github.io/ez-rapp/" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='80' font-size='80'%3E🧠%3C/text%3E%3C/svg%3E" />
+  <style>
+    :root {
+      --bg-0: #0a0a0b;
+      --bg-1: #0f0f12;
+      --bg-2: #16161a;
+      --bg-3: #1d1d22;
+      --line-1: #1a1a1f;
+      --line-2: #26262d;
+      --ink-0: #e8e8ed;
+      --ink-1: #b8b8c2;
+      --ink-2: #7e7e8a;
+      --ink-3: #5a5a64;
+      --accent: #6e6ef0;
+      --accent-hover: #7d7df7;
+      --accent-soft: rgba(110, 110, 240, 0.18);
+      --emerald: #10b981;
+      --amber: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: var(--bg-0); color: var(--ink-0); }
+    body {
+      font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      min-height: 100vh;
+    }
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    header.hero {
+      max-width: 920px; margin: 0 auto;
+      padding: 96px 24px 48px;
+      text-align: center;
+    }
+    .logo { font-size: 64px; line-height: 1; margin-bottom: 16px; }
+    h1 {
+      font-size: 48px; margin: 0 0 16px;
+      font-weight: 600; letter-spacing: -0.02em;
+    }
+    .tagline {
+      font-size: 20px; color: var(--ink-1);
+      margin: 0 auto 8px; max-width: 640px;
+    }
+    .sub {
+      font-size: 14px; color: var(--ink-3); margin: 0 0 40px;
+    }
+
+    .download-card {
+      background: var(--bg-1);
+      border: 1px solid var(--line-2);
+      border-radius: 16px;
+      padding: 32px;
+      max-width: 540px;
+      margin: 0 auto 32px;
+      text-align: left;
+    }
+    .download-card h2 {
+      font-size: 14px; text-transform: uppercase; letter-spacing: 0.08em;
+      color: var(--ink-3); margin: 0 0 16px; font-weight: 500;
+    }
+    .download-row {
+      display: flex; align-items: center; gap: 16px;
+      padding: 16px; margin-bottom: 8px;
+      background: var(--bg-2); border: 1px solid var(--line-2);
+      border-radius: 10px;
+      text-decoration: none; color: inherit;
+      transition: all 0.15s;
+      cursor: pointer;
+    }
+    .download-row:hover {
+      background: var(--bg-3);
+      border-color: var(--accent);
+      text-decoration: none;
+    }
+    .download-row[data-primary="true"] {
+      background: var(--accent-soft);
+      border-color: var(--accent);
+    }
+    .download-row .os-icon { font-size: 28px; flex-shrink: 0; }
+    .download-row .info { flex: 1; min-width: 0; }
+    .download-row .label { font-size: 15px; font-weight: 500; color: var(--ink-0); }
+    .download-row .meta { font-size: 12px; color: var(--ink-3); margin-top: 2px; }
+    .download-row .arrow { font-size: 20px; color: var(--ink-2); }
+
+    .terminal-fallback {
+      max-width: 720px; margin: 24px auto 0;
+      padding: 20px;
+      background: var(--bg-1);
+      border: 1px solid var(--line-2);
+      border-radius: 12px;
+      text-align: left;
+    }
+    .terminal-fallback summary {
+      font-size: 13px; color: var(--ink-2); cursor: pointer; user-select: none;
+    }
+    .terminal-fallback summary:hover { color: var(--ink-1); }
+    .terminal-fallback[open] summary { margin-bottom: 12px; color: var(--ink-1); }
+    .terminal-fallback pre {
+      background: var(--bg-2); border: 1px solid var(--line-1);
+      border-radius: 6px; padding: 12px 14px;
+      font: 13px/1.5 ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+      color: var(--ink-1); margin: 12px 0 0; overflow-x: auto;
+    }
+    .terminal-fallback .which { font-size: 12px; color: var(--ink-3); margin: 14px 0 4px; }
+
+    section.how {
+      max-width: 720px; margin: 0 auto;
+      padding: 48px 24px;
+    }
+    section.how h2 {
+      font-size: 22px; margin: 0 0 16px; font-weight: 600;
+    }
+    .steps { list-style: none; padding: 0; margin: 0; }
+    .steps li {
+      display: flex; gap: 14px;
+      padding: 14px 0;
+      border-bottom: 1px solid var(--line-1);
+    }
+    .steps li:last-child { border-bottom: 0; }
+    .steps .n {
+      flex-shrink: 0; width: 24px; height: 24px;
+      background: var(--accent-soft); color: var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 12px; font-weight: 600;
+    }
+    .steps .text { color: var(--ink-1); }
+    .steps .text b { color: var(--ink-0); font-weight: 600; }
+
+    section.why {
+      max-width: 720px; margin: 0 auto 64px;
+      padding: 0 24px;
+    }
+    .why-grid {
+      display: grid; gap: 14px;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      margin-top: 16px;
+    }
+    .why-card {
+      padding: 16px;
+      background: var(--bg-1); border: 1px solid var(--line-2);
+      border-radius: 10px;
+    }
+    .why-card .icon { font-size: 22px; margin-bottom: 8px; }
+    .why-card .title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+    .why-card .body { font-size: 13px; color: var(--ink-2); line-height: 1.5; }
+
+    footer {
+      max-width: 720px; margin: 0 auto;
+      padding: 32px 24px 64px;
+      text-align: center;
+      color: var(--ink-3); font-size: 12px;
+      border-top: 1px solid var(--line-1);
+    }
+    footer a { color: var(--ink-2); }
+
+    .pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 10px; border-radius: 999px;
+      background: var(--bg-1); border: 1px solid var(--line-2);
+      color: var(--ink-1); font-size: 11px;
+      margin: 6px 4px 0;
+    }
+    .pill .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--emerald); }
+
+    .release-state {
+      font-size: 12px; color: var(--ink-3); margin-top: 12px;
+      padding-top: 12px; border-top: 1px solid var(--line-1);
+    }
+    .release-state .v { color: var(--ink-1); font-family: ui-monospace, monospace; }
+    .release-state.loading { opacity: 0.6; }
+    .release-state.error { color: var(--amber); }
+  </style>
+</head>
+<body>
+  <header class="hero">
+    <div class="logo">🧠</div>
+    <h1>ez-rapp</h1>
+    <p class="tagline">Plain-English AI on your laptop.</p>
+    <p class="sub">No terminal. No API keys. No setup wizard. Just open and chat.</p>
+
+    <div class="download-card">
+      <h2>Download for your computer</h2>
+      <div id="downloads">
+        <!-- filled by JS based on platform detection + latest release -->
+      </div>
+      <div id="release-state" class="release-state loading">Looking up the latest release…</div>
+    </div>
+
+    <details class="terminal-fallback">
+      <summary>Already comfortable with a terminal? Use the one-liner instead.</summary>
+      <p style="font-size:13px; color: var(--ink-2); margin: 12px 0 8px;">
+        ez-rapp and the one-liner write to the <b>same</b> place (<code>~/.brainstem/</code>),
+        so you can use either path — or both, on different machines.
+      </p>
+      <div class="which">macOS or Linux</div>
+      <pre>curl -fsSL https://kody-w.github.io/rapp-installer/install.sh | bash</pre>
+      <div class="which">Windows (PowerShell)</div>
+      <pre>irm https://raw.githubusercontent.com/kody-w/rapp-installer/main/install.ps1 | iex</pre>
+    </details>
+  </header>
+
+  <section class="how">
+    <h2>How it works</h2>
+    <ol class="steps">
+      <li><div class="n">1</div><div class="text"><b>Download</b> the ez-rapp app for your computer (above).</div></li>
+      <li><div class="n">2</div><div class="text"><b>Open it.</b> First launch sets up Python and the AI brainstem on your machine. Takes about a minute.</div></li>
+      <li><div class="n">3</div><div class="text"><b>Sign in with GitHub.</b> One click. Uses your GitHub Copilot subscription — no separate API key.</div></li>
+      <li><div class="n">4</div><div class="text"><b>Chat.</b> Ask anything. It runs locally on your laptop.</div></li>
+    </ol>
+  </section>
+
+  <section class="why">
+    <h2>What you get</h2>
+    <div class="why-grid">
+      <div class="why-card">
+        <div class="icon">💬</div>
+        <div class="title">Just chat</div>
+        <div class="body">No commands to memorize. Talk in plain English. The AI handles the rest.</div>
+      </div>
+      <div class="why-card">
+        <div class="icon">🏠</div>
+        <div class="title">On your machine</div>
+        <div class="body">Conversations stay local. Your laptop is the server.</div>
+      </div>
+      <div class="why-card">
+        <div class="icon">🧠</div>
+        <div class="title">Remembers you</div>
+        <div class="body">Built-in memory across conversations — names, preferences, projects.</div>
+      </div>
+      <div class="why-card">
+        <div class="icon">🔌</div>
+        <div class="title">Extensible</div>
+        <div class="body">Drop one Python file in and it learns a new skill. Or browse the public marketplace from chat.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer>
+    <p>
+      Open source · MIT · Built on the <a href="https://github.com/kody-w/rapp-installer">RAPP brainstem</a>
+    </p>
+    <p>
+      <a href="https://github.com/kody-w/ez-rapp">GitHub</a> ·
+      <a href="https://github.com/kody-w/ez-rapp/releases">Releases</a> ·
+      <a href="https://github.com/kody-w/RAR">Agent marketplace</a>
+    </p>
+  </footer>
+
+  <script>
+    // Detect OS from the browser and rank downloads. ez-rapp itself runs
+    // on macOS, Windows, and Linux — we surface whichever matches first,
+    // then offer the others below.
+    const ua = navigator.userAgent;
+    const platform = (navigator.userAgentData?.platform ?? navigator.platform ?? "").toLowerCase();
+    let guessed = "other";
+    if (/mac|darwin/i.test(platform) || /Macintosh|Mac OS X/.test(ua)) guessed = "mac";
+    else if (/win/i.test(platform) || /Windows/.test(ua)) guessed = "win";
+    else if (/linux/i.test(platform) || /Linux|X11/.test(ua)) guessed = "linux";
+
+    // Detect Apple Silicon vs Intel (best-effort).
+    let macArch = "universal";
+    try {
+      if (navigator.userAgentData?.getHighEntropyValues) {
+        navigator.userAgentData.getHighEntropyValues(["architecture", "bitness"]).then((v) => {
+          if (v.architecture === "arm") macArch = "arm64";
+          if (v.architecture === "x86") macArch = "x64";
+          // We don't re-render here; the rank just affects the first row's hint.
+        });
+      }
+    } catch (_) {}
+
+    const OPTIONS = [
+      { key: "mac",   label: "macOS",    icon: "🍎", match: (a) => /\.dmg$|\.zip$/.test(a.name) && /mac|darwin/i.test(a.name) },
+      { key: "win",   label: "Windows",  icon: "🪟", match: (a) => /\.exe$|\.msi$/.test(a.name) || /win/i.test(a.name) },
+      { key: "linux", label: "Linux",    icon: "🐧", match: (a) => /\.AppImage$|\.deb$|\.rpm$/.test(a.name) || /linux/i.test(a.name) },
+    ];
+
+    async function loadDownloads() {
+      const state = document.getElementById("release-state");
+      const dl = document.getElementById("downloads");
+      try {
+        const res = await fetch("https://api.github.com/repos/kody-w/ez-rapp/releases/latest");
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const r = await res.json();
+        const assets = Array.isArray(r.assets) ? r.assets : [];
+
+        // Order: the user's OS first, then the others.
+        const ordered = [...OPTIONS].sort((a, b) =>
+          (a.key === guessed ? -1 : 0) - (b.key === guessed ? -1 : 0)
+        );
+
+        let any = false;
+        for (const opt of ordered) {
+          const asset = assets.find(opt.match);
+          if (!asset) continue;
+          any = true;
+          const sizeMB = (asset.size / (1024*1024)).toFixed(1);
+          const isPrimary = opt.key === guessed;
+          const row = document.createElement("a");
+          row.className = "download-row";
+          if (isPrimary) row.dataset.primary = "true";
+          row.href = asset.browser_download_url;
+          row.innerHTML = `
+            <span class="os-icon">${opt.icon}</span>
+            <div class="info">
+              <div class="label">Download for ${opt.label}${isPrimary ? " · recommended" : ""}</div>
+              <div class="meta">${asset.name} · ${sizeMB} MB</div>
+            </div>
+            <span class="arrow">↓</span>
+          `;
+          dl.appendChild(row);
+        }
+
+        if (!any) {
+          state.classList.remove("loading");
+          state.classList.add("error");
+          state.innerHTML = `Release <span class="v">${r.tag_name ?? "?"}</span> has no downloadable builds yet — <a href="https://github.com/kody-w/ez-rapp#install">build from source</a> for now.`;
+        } else {
+          state.classList.remove("loading");
+          state.innerHTML = `Latest: <span class="v">${r.tag_name}</span> · released ${new Date(r.published_at).toLocaleDateString()}`;
+        }
+      } catch (e) {
+        state.classList.remove("loading");
+        state.classList.add("error");
+        state.innerHTML = `Couldn't load the latest release (${e.message}). Try the <a href="https://github.com/kody-w/ez-rapp/releases">releases page</a> directly, or the one-liner above.`;
+      }
+    }
+    loadDownloads();
+  </script>
+</body>
+</html>
