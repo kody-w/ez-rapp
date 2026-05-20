@@ -11,6 +11,7 @@ const bridge: EzRappBridge = {
     },
     install: (kind?: InstallerKind) => ipcRenderer.invoke("bootstrap:install", kind),
     detectKind: () => ipcRenderer.invoke("bootstrap:detectKind"),
+    reopenPicker: () => ipcRenderer.invoke("bootstrap:reopenPicker"),
   },
   brainstem: {
     health: () => ipcRenderer.invoke("brainstem:health"),

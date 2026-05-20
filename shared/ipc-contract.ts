@@ -87,6 +87,8 @@ export interface EzRappBridge {
      * if we can guess. Renderer falls back to a picker if this returns null.
      */
     detectKind: () => Promise<InstallerKind | null>;
+    /** Re-open the platform picker (e.g. after a wrong-platform spawn error). */
+    reopenPicker: () => Promise<void>;
   };
   brainstem: {
     health: () => Promise<HealthResult>;

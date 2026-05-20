@@ -77,12 +77,23 @@ export function BootstrapScreen({ state, onInstall }: { state: BootstrapState; o
             </button>
           )}
           {state.step === "error" && (
-            <button
-              onClick={() => onInstall()}
-              className="w-full px-4 py-2.5 bg-surface-2 hover:bg-surface-3 border border-line-base rounded-lg text-ink-0 text-sm font-medium transition-colors"
-            >
-              Try again
-            </button>
+            <div className="space-y-2">
+              <div className="text-rose-400 text-xs text-left bg-rose-500/10 border border-rose-500/30 rounded-lg px-3 py-2 break-words">
+                {state.error}
+              </div>
+              <button
+                onClick={() => onInstall()}
+                className="w-full px-4 py-2.5 bg-accent hover:bg-accent-hover rounded-lg text-white text-sm font-medium transition-colors"
+              >
+                Try again
+              </button>
+              <button
+                onClick={() => void window.ezrapp.bootstrap.reopenPicker()}
+                className="w-full px-4 py-2 bg-surface-2 hover:bg-surface-3 border border-line-base rounded-lg text-ink-1 text-xs font-medium transition-colors"
+              >
+                Pick a different platform
+              </button>
+            </div>
           )}
           <p className="text-ink-3 text-[11px]">
             ez-rapp uses your GitHub Copilot subscription — no separate API key. After install you sign in with one click.

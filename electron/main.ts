@@ -83,6 +83,7 @@ function createWindow(): void {
 ipcMain.handle("bootstrap:status", () => bootstrapState);
 ipcMain.handle("bootstrap:install", async (_e, kind?: InstallerKind) => ensureRunningAndReady(kind));
 ipcMain.handle("bootstrap:detectKind", () => detectInstallerKind());
+ipcMain.handle("bootstrap:reopenPicker", () => { bootstrap.reopenPlatformPicker(); });
 
 ipcMain.handle("brainstem:health", async () => {
   const r = await client.health();

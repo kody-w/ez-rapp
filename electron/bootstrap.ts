@@ -89,12 +89,19 @@ export class Bootstrap extends EventEmitter {
       // window, not in a browser.
       const env = { ...process.env, RAPP_INSTALLER_NO_LAUNCH: "1" };
 
-      const child = kind === "windows"
-        ? spawn("powershell.exe", [
-            "-NoProfile", "-ExecutionPolicy", "Bypass",
-            "-Command", `irm ${INSTALL_URL_PS1} | iex`,
-          ], { env, stdio: ["ignore", "pipe", "pipe"] })
-        : spawn("bash", ["-lc", `curl -fsSL ${INSTALL_URL_BASH} | bash`], { env, stdio: ["ignore", "pipe", "pipe"] });
+      const cmd = kind === "windows" ? "powershell.exe" : "bash";
+      const args = kind === "windows"
+        ? ["-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", `irm ${INSTALL_URL_PS1} | iex`]
+        : ["-lc", `curl -fsSL ${INSTALL_URL_BASH} | bash`];
+
+      let child;
+      try {
+        child = spawn(cmd, args, { env, stdio: ["ignore", "pipe", "pipe"] });
+      } catch (e) {
+        // Synchronous spawn failure (rare — usually surfaces via "error" event).
+        reject(this.translateSpawnError(e as NodeJS.ErrnoException, kind, cmd));
+        return;
+      }
 
       const onLine = (buf: Buffer): void => {
         const line = buf.toString();
@@ -107,11 +114,52 @@ export class Bootstrap extends EventEmitter {
       };
       child.stdout?.on("data", onLine);
       child.stderr?.on("data", onLine);
-      child.on("error", (e) => reject(e));
+      child.on("error", (e) => reject(this.translateSpawnError(e as NodeJS.ErrnoException, kind, cmd)));
       child.on("exit", (code) => {
         if (code === 0) resolve();
-        else reject(new Error(`installer exited with code ${code}`));
+        else reject(new Error(
+          `The ${kind === "windows" ? "Windows" : "macOS/Linux"} installer exited with code ${code}. ` +
+          `Try again, or if you picked the wrong platform, choose a different one. ` +
+          `Full logs are at ~/Library/Logs/ez-rapp/ (macOS) or %USERPROFILE%\\AppData\\Local\\ez-rapp\\logs\\ (Windows).`
+        ));
       });
+    });
+  }
+
+  /**
+   * Friendly translation of spawn errors. The common one is ENOENT —
+   * the user picked Windows but powershell.exe isn't on PATH (or
+   * picked POSIX but bash isn't available). Tell them in plain English
+   * and route them back to the picker if it looks wrong-platform.
+   */
+  private translateSpawnError(err: NodeJS.ErrnoException, kind: InstallerKind, cmd: string): Error {
+    if (err.code === "ENOENT") {
+      const friendly = kind === "windows"
+        ? `We tried to run PowerShell ("${cmd}") but it isn't available on this machine. ` +
+          `That usually means this isn't a Windows computer — try going back and picking macOS / Linux.`
+        : `We tried to run bash ("${cmd}") but it isn't available on this machine. ` +
+          `That usually means this is a Windows computer — try going back and picking Windows.`;
+      const e = new Error(friendly);
+      (e as NodeJS.ErrnoException).code = "ENOENT";
+      return e;
+    }
+    return new Error(`Couldn't start the installer (${err.code ?? "unknown"}): ${err.message}`);
+  }
+
+  /**
+   * Re-open the platform picker — used after a manual pick failed (e.g.
+   * the user chose Windows on a Mac and spawning powershell ENOENT'd).
+   * Renderer wires its "Try a different platform" button to this.
+   */
+  reopenPlatformPicker(): void {
+    this.set({
+      step: "needs-platform-pick",
+      message: "Pick your platform again.",
+      detail: "The last attempt couldn't find the installer command on this machine. Pick the OS that actually matches your computer.",
+      options: [
+        { kind: "posix",   label: "macOS or Linux",         hint: "Uses the bash one-liner from rapp-installer." },
+        { kind: "windows", label: "Windows (10 or later)",  hint: "Uses the PowerShell one-liner from rapp-installer." },
+      ],
     });
   }
 }
