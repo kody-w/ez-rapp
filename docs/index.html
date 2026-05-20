@@ -198,16 +198,22 @@
       <div id="release-state" class="release-state loading">Looking up the latest release…</div>
     </div>
 
-    <details class="terminal-fallback">
-      <summary>Already comfortable with a terminal? Use the one-liner instead.</summary>
+    <details class="terminal-fallback" open>
+      <summary>🧙 No security prompts (one-liner install)</summary>
       <p style="font-size:13px; color: var(--ink-2); margin: 12px 0 8px;">
-        ez-rapp and the one-liner write to the <b>same</b> place (<code>~/.brainstem/</code>),
-        so you can use either path — or both, on different machines.
+        Paste this into your terminal. Bypasses the macOS "unidentified developer" warning
+        and Windows SmartScreen entirely — works because curl-downloaded files don't get
+        the quarantine flag the way browser-downloads do.
       </p>
       <div class="which">macOS or Linux</div>
-      <pre>curl -fsSL https://kody-w.github.io/rapp-installer/install.sh | bash</pre>
+      <pre>curl -fsSL https://kody-w.github.io/ez-rapp/install.sh | bash</pre>
       <div class="which">Windows (PowerShell)</div>
-      <pre>irm https://raw.githubusercontent.com/kody-w/rapp-installer/main/install.ps1 | iex</pre>
+      <pre>irm https://kody-w.github.io/ez-rapp/install.ps1 | iex</pre>
+      <p style="font-size:12px; color: var(--ink-3); margin: 12px 0 0;">
+        Want just the brainstem (no Electron window)?
+        See the <a href="https://github.com/kody-w/rapp-installer">rapp-installer one-liner</a>.
+        ez-rapp and rapp-installer write to the same <code>~/.brainstem/</code>, so you can use both.
+      </p>
     </details>
   </header>
 

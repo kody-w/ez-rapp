@@ -1,0 +1,103 @@
+name: release
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to attach builds to (e.g. v0.1.1)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: build (${{ matrix.platform }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: macos-arm64
+            runner: macos-14         # Apple Silicon
+            cmd: pnpm exec electron-builder --mac --arm64 --publish never
+            artifact: "release/ez-rapp-*.zip"
+          - platform: windows-x64
+            runner: windows-latest
+            cmd: pnpm exec electron-builder --win --x64 --publish never
+            artifact: "release/*Setup*.exe"
+          - platform: linux-x64
+            runner: ubuntu-latest
+            cmd: pnpm exec electron-builder --linux --x64 --publish never
+            artifact: "release/*.AppImage"
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - name: build
+        shell: bash
+        run: ${{ matrix.cmd }}
+
+      # Ad-hoc codesign on macOS so the binary at least carries *a*
+      # signature (real notarization needs an Apple Developer account
+      # at $99/yr; this is the free best-effort). Doesn't bypass
+      # Gatekeeper on Sequoia by itself — the install.sh one-liner is
+      # what actually side-steps the quarantine xattr.
+      - name: ad-hoc codesign (mac)
+        if: matrix.platform == 'macos-arm64'
+        shell: bash
+        run: |
+          set -e
+          APP=$(find release -name "*.app" -maxdepth 3 -print -quit)
+          if [ -n "$APP" ]; then
+            codesign --force --deep --sign - "$APP"
+            echo "ad-hoc signed: $APP"
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ez-rapp-${{ matrix.platform }}
+          path: ${{ matrix.artifact }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+
+      - name: tag name
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "name=${{ github.event.inputs.tag }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "name=${GITHUB_REF#refs/tags/}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: list artifacts
+        run: ls -lh dist/
+
+      - name: attach to release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.tag.outputs.name }}
+          files: dist/*
+          fail_on_unmatched_files: true
