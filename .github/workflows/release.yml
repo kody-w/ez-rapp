@@ -21,15 +21,15 @@ jobs:
         include:
           - platform: macos-arm64
             runner: macos-14         # Apple Silicon
-            cmd: pnpm exec electron-builder --mac --arm64 --publish never
+            cmd: pnpm exec electron-vite build && pnpm exec electron-builder --mac --arm64 --publish never
             artifact: "release/ez-rapp-*.zip"
           - platform: windows-x64
             runner: windows-latest
-            cmd: pnpm exec electron-builder --win --x64 --publish never
+            cmd: pnpm exec electron-vite build && pnpm exec electron-builder --win --x64 --publish never
             artifact: "release/*Setup*.exe"
           - platform: linux-x64
             runner: ubuntu-latest
-            cmd: pnpm exec electron-builder --linux --x64 --publish never
+            cmd: pnpm exec electron-vite build && pnpm exec electron-builder --linux --x64 --publish never
             artifact: "release/*.AppImage"
     runs-on: ${{ matrix.runner }}
     steps:
