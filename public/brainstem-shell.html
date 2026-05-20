@@ -5,8 +5,9 @@
        ez-rapp Electron patches — applied on top of the upstream
        RAPP Brainstem index.html. The grail UI is locked at
        ~/.brainstem/src/rapp_brainstem/index.html; we vendor a copy
-       here and apply our Electron-specific fixes WITHOUT touching
-       the original. Re-sync upstream periodically; re-apply patches.
+       at public/brainstem-shell.html and apply our Electron-specific
+       fixes WITHOUT touching the original. To refresh from upstream,
+       run scripts/sync-brainstem-shell.sh — it re-injects this block.
        ─────────────────────────────────────────────────────────── -->
   <base href="http://127.0.0.1:7071/">
   <script>
@@ -30,6 +31,45 @@
       if (typeof url === "string" && url.startsWith("/")) url = BASE + url;
       return _open.call(this, method, url, ...rest);
     };
+
+    // Upstream typo fixes — the brainstem HTML renders some labels with
+    // typos ("Trsh" instead of "Trash" on the agents-panel delete
+    // button). Upstream is sacred; patch the rendered DOM here so the
+    // text is correct in both the Electron build and the PWA.
+    const TYPOS = { "Trsh": "Trash" };
+    const fixTextNodes = (root) => {
+      if (!root) return;
+      const it = document.createNodeIterator(root, NodeFilter.SHOW_TEXT, null);
+      let n;
+      while ((n = it.nextNode())) {
+        const fix = TYPOS[(n.nodeValue || "").trim()];
+        if (fix) n.nodeValue = fix;
+      }
+    };
+    const fixOne = (node) => {
+      if (!node) return;
+      if (node.nodeType === 1) fixTextNodes(node);
+      else if (node.nodeType === 3 && TYPOS[(node.nodeValue || "").trim()]) {
+        node.nodeValue = TYPOS[node.nodeValue.trim()];
+      }
+    };
+    const startTypoWatcher = () => {
+      fixTextNodes(document.body);
+      new MutationObserver((muts) => {
+        for (const m of muts) {
+          m.addedNodes.forEach(fixOne);
+          // Also catch text-only updates to existing elements (the
+          // brainstem sometimes re-uses a button and just rewrites
+          // textContent).
+          if (m.type === "characterData") fixOne(m.target);
+        }
+      }).observe(document.body, { childList: true, subtree: true, characterData: true });
+    };
+    if (document.readyState === "loading") {
+      document.addEventListener("DOMContentLoaded", startTypoWatcher, { once: true });
+    } else {
+      startTypoWatcher();
+    }
   })();
   </script>
   <style>
