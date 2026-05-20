@@ -51,6 +51,23 @@ Want it to do more? You don't install plugins or tweak config files. You [drop o
 
 If you're a developer comfortable in the terminal, use the [rapp-installer one-liner](https://github.com/kody-w/rapp-installer). ez-rapp is the same thing, for everyone else.
 
+## Works alongside the terminal one-liner
+
+ez-rapp and the [rapp-installer one-liner](https://github.com/kody-w/rapp-installer) write to **the same place** (`~/.brainstem/`). You can mix and match however you want:
+
+- **Started in the terminal, want a nicer window?** Open ez-rapp — it finds your existing `~/.brainstem/` and skips installation. If a `brainstem` server is already running on `localhost:7071`, ez-rapp adopts it instead of spawning a competitor.
+- **Installed via ez-rapp, want to use the CLI later?** `~/.brainstem/venv/bin/python ~/.brainstem/src/rapp_brainstem/brainstem.py` works exactly as if you'd used the one-liner.
+- **Switching between machines?** Run whichever installer is easier on each device — same files on disk, same agents, same memory.
+
+ez-rapp auto-detects your platform and runs the right installer:
+
+| OS | What ez-rapp runs |
+|---|---|
+| macOS / Linux | `bash -lc 'curl -fsSL https://kody-w.github.io/rapp-installer/install.sh \| bash'` |
+| Windows | `powershell -Command 'irm https://raw.githubusercontent.com/kody-w/rapp-installer/main/install.ps1 \| iex'` |
+
+These are the exact one-liners from the [rapp-installer README](https://github.com/kody-w/rapp-installer) — ez-rapp just clicks the button for you.
+
 ---
 
 ## Install

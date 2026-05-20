@@ -52,7 +52,16 @@ export class Bootstrap extends EventEmitter {
 
   private runInstaller(): Promise<void> {
     return new Promise((resolve, reject) => {
+      // OS detection — ez-rapp picks the right canonical one-liner so
+      // the user gets the same outcome whether they run this from a
+      // terminal or click our install button. Same files on disk either
+      // way, so the two paths are interchangeable forever after.
       const isWin = process.platform === "win32";
+      const isMacOrLinux = process.platform === "darwin" || process.platform === "linux";
+      if (!isWin && !isMacOrLinux) {
+        reject(new Error(`unsupported platform: ${process.platform}`));
+        return;
+      }
       // Tell install.sh / install.ps1 to bring the kernel down to disk
       // but NOT to auto-launch the brainstem at the end — we do that
       // ourselves through the supervisor so the chat happens inside this

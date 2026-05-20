@@ -34,8 +34,30 @@ export class BrainstemSupervisor extends EventEmitter {
     if (this.state === "starting" || this.state === "ready") return;
     this.stopRequested = false;
     this.setState("starting");
-    this.spawnChild();
+    // Coexistence with the rapp-installer one-liner: if the brainstem is
+    // already running (someone launched it from the terminal, or a prior
+    // `brainstem` command is still alive), adopt it. We only spawn when
+    // nothing's listening on :7071/health. The supervisor polls /health
+    // every 1.5s regardless, so an externally-managed brainstem flips
+    // us to "ready" the same way our own child would.
+    void this.adoptOrSpawn();
     this.startPolling();
+  }
+
+  private async adoptOrSpawn(): Promise<void> {
+    try {
+      const ctrl = new AbortController();
+      const t = setTimeout(() => ctrl.abort(), 1000);
+      const res = await fetch(`${BRAINSTEM_URL}/health`, { signal: ctrl.signal });
+      clearTimeout(t);
+      if (res.ok) {
+        // External brainstem already serving — don't spawn a competitor.
+        // (Two processes on :7071 would EADDRINUSE anyway.)
+        this.setState("ready");
+        return;
+      }
+    } catch { /* nothing's listening — proceed to spawn */ }
+    this.spawnChild();
   }
 
   async stop(): Promise<void> {
