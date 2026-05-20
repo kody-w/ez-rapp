@@ -3,24 +3,29 @@ import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Bootstrap, detectInstallerKind } from "./bootstrap";
 import { BrainstemSupervisor } from "./brainstem-supervisor";
-import { ThreadStore } from "./thread-store";
-import * as client from "./brainstem-client";
-import type { BootstrapState, ChatRequest, InstallerKind, SendPhase } from "@shared/ipc-contract";
+import { BRAINSTEM_URL } from "./paths";
+import type { BootstrapState, InstallerKind } from "@shared/ipc-contract";
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 app.setName("ez-rapp");
 
-/** Enable CDP in dev so external tooling can drive the UI (same as rcon). */
+/** Enable CDP in dev so external tooling can drive the UI. */
 if (!app.isPackaged) {
   app.commandLine.appendSwitch("remote-debugging-port", process.env.EZRAPP_CDP_PORT ?? "9223");
 }
 
 const bootstrap = new Bootstrap();
 const supervisor = new BrainstemSupervisor();
-const thread = new ThreadStore();
 let bootstrapState: BootstrapState = bootstrap.current();
+/** The single window we manage. We pass it the bootstrap UI on launch
+ *  and navigate it to the brainstem URL once that's serving. */
+let win: BrowserWindow | null = null;
+/** Track whether we've already promoted the window to the brainstem UI,
+ *  so a transient supervisor-state change doesn't reload the page out
+ *  from under the user. */
+let promoted = false;
 
 function broadcast(channel: string, payload: unknown): void {
   for (const w of BrowserWindow.getAllWindows()) w.webContents.send(channel, payload);
@@ -32,15 +37,24 @@ bootstrap.on("state", (s: BootstrapState) => {
 });
 
 supervisor.on("state", (s) => {
-  // Surface supervisor state as bootstrap state to keep the renderer simple.
   if (s === "ready") {
     bootstrapState = { step: "ready", message: "Ready." };
     broadcast("bootstrap:state", bootstrapState);
+    // Hand the window over to the brainstem UI exactly like the browser
+    // would see it. The user can't tell they're in an Electron wrapper —
+    // it's the same page localhost:7071 serves.
+    promoteToBrainstemUI();
   } else if (s === "starting") {
     bootstrapState = { step: "starting", message: "Starting the brainstem…" };
     broadcast("bootstrap:state", bootstrapState);
   }
 });
+
+function promoteToBrainstemUI(): void {
+  if (promoted || !win || win.isDestroyed()) return;
+  promoted = true;
+  void win.loadURL(BRAINSTEM_URL);
+}
 
 async function ensureRunningAndReady(kind?: InstallerKind): Promise<{ ok: boolean; error?: string }> {
   if (bootstrap.isInstalled()) {
@@ -54,7 +68,7 @@ async function ensureRunningAndReady(kind?: InstallerKind): Promise<{ ok: boolea
 }
 
 function createWindow(): void {
-  const win = new BrowserWindow({
+  win = new BrowserWindow({
     width: 1080,
     height: 760,
     minWidth: 720,
@@ -76,71 +90,26 @@ function createWindow(): void {
   } else {
     void win.loadFile(join(__dirname, "../renderer/index.html"));
   }
+
+  // External links open in the user's actual browser, not inside our
+  // window — keeps the brainstem UI in here without surprises.
+  win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("http")) void shell.openExternal(url);
+    return { action: "deny" };
+  });
+
+  // If the brainstem is already up when the window opens (rapid reopen,
+  // background install completed before window was created), promote now.
+  if (supervisor.getState() === "ready") promoteToBrainstemUI();
 }
 
-// ── IPC handlers ───────────────────────────────────────────────────────
+// ── IPC handlers (the renderer only needs bootstrap surface; once we
+// navigate to the brainstem UI the renderer is a stock browser page) ──
 
 ipcMain.handle("bootstrap:status", () => bootstrapState);
 ipcMain.handle("bootstrap:install", async (_e, kind?: InstallerKind) => ensureRunningAndReady(kind));
 ipcMain.handle("bootstrap:detectKind", () => detectInstallerKind());
 ipcMain.handle("bootstrap:reopenPicker", () => { bootstrap.reopenPlatformPicker(); });
-
-ipcMain.handle("brainstem:health", async () => {
-  const r = await client.health();
-  if (!r.ok) return { ok: false, error: r.error ?? "offline" };
-  const b = r.body ?? {};
-  const status = typeof b.status === "string" ? b.status : undefined;
-  const agentsField = b.agents;
-  return {
-    ok: true,
-    model: typeof b.model === "string" ? b.model : undefined,
-    agents: typeof agentsField === "number" ? agentsField : Array.isArray(agentsField) ? agentsField.length : undefined,
-    authStatus: status === "unauthenticated" ? "unauthenticated" : status === "authenticated" ? "authenticated" : undefined,
-  };
-});
-
-ipcMain.handle("brainstem:loginStart", () => client.loginStart());
-ipcMain.handle("brainstem:loginPoll", () => client.loginPoll());
-ipcMain.handle("brainstem:chat", async (_e, req: ChatRequest) => client.chat(req));
-ipcMain.handle("brainstem:openExternal", (_e, url: string) => {
-  if (typeof url === "string" && /^https?:\/\//.test(url)) void shell.openExternal(url);
-});
-
-ipcMain.handle("thread:get", () => thread.list());
-ipcMain.handle("thread:clear", () => { thread.clear(); broadcast("thread:update", thread.list()); });
-
-ipcMain.handle("thread:send", async (_e, text: string) => {
-  const trimmed = (text ?? "").trim();
-  if (!trimmed) return { ok: false, error: "empty" };
-  const phase = (p: SendPhase, error?: string): void => broadcast("thread:send-status", { phase, error });
-  thread.append({ role: "user", content: trimmed });
-  broadcast("thread:update", thread.list());
-  // If the brainstem isn't up yet, that's the "resolving" phase.
-  if (supervisor.getState() !== "ready") {
-    phase("resolving");
-    const startReady = Date.now();
-    while (supervisor.getState() !== "ready" && Date.now() - startReady < 30_000) {
-      await new Promise((r) => setTimeout(r, 500));
-    }
-    if (supervisor.getState() !== "ready") {
-      phase("failed", "brainstem didn't come up in 30s");
-      return { ok: false, error: "brainstem not ready" };
-    }
-  }
-  phase("delivered");
-  try {
-    const history = thread.list().slice(0, -1);
-    phase("typing");
-    const resp = await client.chat({ user_input: trimmed, conversation_history: history });
-    thread.append({ role: "assistant", content: resp.response ?? "" });
-    broadcast("thread:update", thread.list());
-    phase("read");
-    return { ok: true };
-  } catch (e) {
-    phase("failed", (e as Error).message);
-    return { ok: false, error: (e as Error).message };
-  }
-});
 
 app.whenReady().then(async () => {
   createWindow();

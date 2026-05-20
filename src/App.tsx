@@ -1,44 +1,31 @@
 import { useEffect, useState, type ReactElement } from "react";
-import type { BootstrapState, HealthResult, InstallerKind } from "@shared/ipc-contract";
-import { ChatScreen } from "./components/ChatScreen";
+import type { BootstrapState, InstallerKind } from "@shared/ipc-contract";
 import { BootstrapScreen } from "./components/BootstrapScreen";
-import { LoginGate } from "./components/LoginGate";
 
+/**
+ * The renderer's job is finished the moment the brainstem is ready:
+ * main.ts then calls win.loadURL(BRAINSTEM_URL) and the user sees the
+ * brainstem's own web UI inside this Electron window. There's no
+ * ChatScreen here on purpose — we're not reimplementing the chat in
+ * React; we're embedding the canonical one.
+ *
+ * While we wait, this component renders the install + platform-picker
+ * flow. As soon as state.step transitions to "ready", main.ts
+ * navigates the window away from us anyway, so this component is
+ * unmounted automatically when the user lands in the brainstem UI.
+ */
 export function App(): ReactElement {
   const [bootstrap, setBootstrap] = useState<BootstrapState>({ step: "checking", message: "Checking your setup…" });
-  const [health, setHealth] = useState<HealthResult>({ ok: false, error: "loading" });
 
   useEffect(() => {
     void (async () => setBootstrap(await window.ezrapp.bootstrap.status()))();
     return window.ezrapp.bootstrap.onChange(setBootstrap);
   }, []);
 
-  useEffect(() => {
-    let cancelled = false;
-    const tick = async (): Promise<void> => {
-      if (cancelled) return;
-      try { setHealth(await window.ezrapp.brainstem.health()); }
-      catch (e) { setHealth({ ok: false, error: (e as Error).message }); }
-    };
-    void tick();
-    const t = setInterval(tick, 2_000);
-    return () => { cancelled = true; clearInterval(t); };
-  }, []);
-
-  const installed = bootstrap.step === "ready" || bootstrap.step === "starting";
-  const needsInstall = !installed && bootstrap.step !== "ready";
-  const needsAuth = health.ok && health.authStatus === "unauthenticated";
-
-  if (needsInstall) {
-    return (
-      <BootstrapScreen
-        state={bootstrap}
-        onInstall={(kind?: InstallerKind) => void window.ezrapp.bootstrap.install(kind)}
-      />
-    );
-  }
-  if (needsAuth) {
-    return <LoginGate onSignedIn={async () => setHealth(await window.ezrapp.brainstem.health())} />;
-  }
-  return <ChatScreen health={health} />;
+  return (
+    <BootstrapScreen
+      state={bootstrap}
+      onInstall={(kind?: InstallerKind) => void window.ezrapp.bootstrap.install(kind)}
+    />
+  );
 }

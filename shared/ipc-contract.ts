@@ -1,10 +1,10 @@
 /**
  * IPC surface between the main process and the renderer.
  *
- * ez-rapp is intentionally tiny: bootstrap → auth → chat. Nothing else.
- * Every method that talks to the brainstem points at the canonical
- * install location at ~/.brainstem/ — the rapp-installer's output is
- * sacred and ez-rapp only reads from it.
+ * Intentionally tiny: just the bootstrap flow. Once the brainstem is
+ * serving on localhost:7071, the main process navigates the window
+ * directly to that URL — the user sees the brainstem UI verbatim, no
+ * Electron-side re-skin. So nothing past install needs a typed IPC.
  */
 
 export type BootstrapStep =
@@ -19,11 +19,7 @@ export type BootstrapStep =
   | "ready"                // brainstem is responding on 7071
   | "error";               // anything went wrong
 
-/**
- * The two installer paths the rapp-installer publishes. macOS and Linux
- * share install.sh; Windows uses install.ps1. ez-rapp picks one based
- * on process.platform — if that detection fails the user picks manually.
- */
+/** macOS / Linux share install.sh (POSIX); Windows uses install.ps1. */
 export type InstallerKind = "posix" | "windows";
 
 export interface BootstrapState {
@@ -33,43 +29,6 @@ export interface BootstrapState {
   error?: string;
   /** When step is "needs-platform-pick", which platforms the user can choose. */
   options?: Array<{ kind: InstallerKind; label: string; hint: string }>;
-}
-
-export type HealthResult =
-  | { ok: true; model?: string; agents?: number; authStatus?: "authenticated" | "unauthenticated" }
-  | { ok: false; error: string };
-
-export type LoginStart =
-  | { ok: true; userCode: string; verificationUri: string }
-  | { ok: false; error: string };
-
-export type LoginPoll =
-  | { status: "pending" }
-  | { status: "ok"; username?: string }
-  | { status: "expired"; error: string }
-  | { status: "error"; error: string };
-
-export interface ChatTurn {
-  role: "user" | "assistant" | "system";
-  content: string;
-  name?: string;
-}
-
-export interface ChatRequest {
-  user_input: string;
-  conversation_history?: ChatTurn[];
-}
-
-export interface ChatResponse {
-  response: string;
-  session_id?: string;
-}
-
-export type SendPhase = "resolving" | "delivered" | "typing" | "read" | "failed";
-
-export interface SendStatusEvent {
-  phase: SendPhase;
-  error?: string;
 }
 
 export interface EzRappBridge {
@@ -82,28 +41,10 @@ export interface EzRappBridge {
      * detection failed and the user manually picked their platform.
      */
     install: (kind?: InstallerKind) => Promise<{ ok: boolean; error?: string }>;
-    /**
-     * Best-effort guess at the right installer to run on this hardware,
-     * if we can guess. Renderer falls back to a picker if this returns null.
-     */
+    /** Best-effort guess at the right installer for this hardware. */
     detectKind: () => Promise<InstallerKind | null>;
     /** Re-open the platform picker (e.g. after a wrong-platform spawn error). */
     reopenPicker: () => Promise<void>;
-  };
-  brainstem: {
-    health: () => Promise<HealthResult>;
-    loginStart: () => Promise<LoginStart>;
-    loginPoll: () => Promise<LoginPoll>;
-    chat: (req: ChatRequest) => Promise<ChatResponse>;
-    openExternal: (url: string) => Promise<void>;
-  };
-  thread: {
-    /** Local persistence of the chat for live re-render. */
-    get: () => Promise<ChatTurn[]>;
-    send: (text: string) => Promise<{ ok: boolean; error?: string }>;
-    clear: () => Promise<void>;
-    onUpdate: (cb: (turns: ChatTurn[]) => void) => () => void;
-    onSendStatus: (cb: (e: SendStatusEvent) => void) => () => void;
   };
 }
 

@@ -1,5 +1,13 @@
 import { contextBridge, ipcRenderer } from "electron";
-import type { BootstrapState, ChatRequest, ChatTurn, EzRappBridge, InstallerKind, SendStatusEvent } from "@shared/ipc-contract";
+import type { BootstrapState, EzRappBridge, InstallerKind } from "@shared/ipc-contract";
+
+/**
+ * Preload contract is intentionally tiny: just the bootstrap flow. Once
+ * the brainstem is up, the main process navigates the window to
+ * http://localhost:7071/ — that page is a stock browser page, not under
+ * our renderer, and doesn't need any of our IPC. The user gets the
+ * brainstem UI verbatim, just hosted inside our Electron window.
+ */
 
 const bridge: EzRappBridge = {
   bootstrap: {
@@ -12,28 +20,6 @@ const bridge: EzRappBridge = {
     install: (kind?: InstallerKind) => ipcRenderer.invoke("bootstrap:install", kind),
     detectKind: () => ipcRenderer.invoke("bootstrap:detectKind"),
     reopenPicker: () => ipcRenderer.invoke("bootstrap:reopenPicker"),
-  },
-  brainstem: {
-    health: () => ipcRenderer.invoke("brainstem:health"),
-    loginStart: () => ipcRenderer.invoke("brainstem:loginStart"),
-    loginPoll: () => ipcRenderer.invoke("brainstem:loginPoll"),
-    chat: (req: ChatRequest) => ipcRenderer.invoke("brainstem:chat", req),
-    openExternal: (url: string) => ipcRenderer.invoke("brainstem:openExternal", url),
-  },
-  thread: {
-    get: () => ipcRenderer.invoke("thread:get"),
-    send: (text: string) => ipcRenderer.invoke("thread:send", text),
-    clear: () => ipcRenderer.invoke("thread:clear"),
-    onUpdate: (cb) => {
-      const listener = (_e: unknown, turns: ChatTurn[]): void => cb(turns);
-      ipcRenderer.on("thread:update", listener);
-      return () => ipcRenderer.removeListener("thread:update", listener);
-    },
-    onSendStatus: (cb) => {
-      const listener = (_e: unknown, evt: SendStatusEvent): void => cb(evt);
-      ipcRenderer.on("thread:send-status", listener);
-      return () => ipcRenderer.removeListener("thread:send-status", listener);
-    },
   },
 };
 
