@@ -1,0 +1,19 @@
+{
+  "name": "ez-rapp",
+  "short_name": "ez-rapp",
+  "description": "Plain-English AI on your laptop. The brainstem chat in a standalone window.",
+  "start_url": "/ez-rapp/app.html",
+  "scope": "/ez-rapp/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0d1117",
+  "theme_color": "#0d1117",
+  "icons": [
+    {
+      "src": "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48dGV4dCB5PSI4MCIgZm9udC1zaXplPSI4MCI+8J+noDwvdGV4dD48L3N2Zz4=",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

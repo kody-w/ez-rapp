@@ -53,4 +53,9 @@ PY
 
 rm -f "$TMP"
 echo "  ✓ vendored copy refreshed at public/brainstem-shell.html"
-echo "  next: pnpm dev   # to verify the patches still apply cleanly"
+
+# Rebuild the PWA mirror at docs/app.html from the freshly-patched shell.
+bash "$REPO_ROOT/scripts/build-pwa.sh"
+
+echo "  next: pnpm dev                              # verify Electron build"
+echo "        open https://kody-w.github.io/ez-rapp/app.html   # PWA"
