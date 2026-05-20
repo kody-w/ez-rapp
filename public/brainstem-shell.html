@@ -92,6 +92,39 @@
   button, input, textarea, select, a, [role="button"] {
     -webkit-app-region: no-drag;
   }
+
+  /* ── Installed Agents panel layout fix ────────────────────────
+     Upstream pins #agents-panel at 300px with .agent-list li using
+     justify-content: space-between and no wrap. Long agent names
+     like "RappLeviathanFactory (rapp_leviathan_factory_agent.py)"
+     blow past the panel width and shove the Export/Trash buttons
+     off the right edge. Make the panel wider, let the name flex-
+     grow + wrap, and freeze the action buttons so they always sit
+     visible at the right. */
+  #agents-panel {
+    width: 460px !important;
+    max-width: calc(100vw - 32px);
+  }
+  .agent-list li {
+    flex-wrap: wrap;
+    gap: 6px 10px;
+    align-items: center;
+  }
+  .agent-list .agent-name {
+    flex: 1 1 220px;
+    min-width: 0;
+    word-break: break-word;
+    overflow-wrap: anywhere;
+  }
+  /* The two action buttons cluster to the right and never shrink. */
+  .agent-list li > button,
+  .agent-list li > .export-btn,
+  .agent-list li > .delete-btn,
+  .agent-list li > [class*="export"],
+  .agent-list li > [class*="trash"],
+  .agent-list li > [class*="delete"] {
+    flex: 0 0 auto;
+  }
   </style>
   <!-- /ez-rapp Electron patches ─────────────────────────────────── -->
 
