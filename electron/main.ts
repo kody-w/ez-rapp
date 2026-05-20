@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, shell } from "electron";
+import { app, BrowserWindow, Menu, ipcMain, shell } from "electron";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
 import { Bootstrap, detectInstallerKind } from "./bootstrap";
@@ -73,7 +73,7 @@ function createWindow(): void {
     height: 760,
     minWidth: 720,
     minHeight: 520,
-    backgroundColor: "#0a0a0b",
+    backgroundColor: "#0d1117", // match the brainstem UI's bg so the swap is seamless
     titleBarStyle: process.platform === "darwin" ? "hiddenInset" : "default",
     trafficLightPosition: process.platform === "darwin" ? { x: 14, y: 14 } : undefined,
     title: "ez-rapp",
@@ -81,7 +81,16 @@ function createWindow(): void {
       preload: join(__dirname, "../preload/index.cjs"),
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      // sandbox: false because once we navigate to localhost:7071 the
+      // brainstem UI needs a normal web context (XHR, fetch, dynamic
+      // script execution, marked.js CDN). Sandboxed render processes
+      // block enough of the page's bootstrap that it lands blank.
+      sandbox: false,
+      webSecurity: true,
+      // Allow CDN scripts (marked.min.js) and any other resources the
+      // brainstem UI loads. The page is local; the CDN is the only
+      // remote dependency.
+      allowRunningInsecureContent: false,
     },
   });
 
@@ -111,7 +120,45 @@ ipcMain.handle("bootstrap:install", async (_e, kind?: InstallerKind) => ensureRu
 ipcMain.handle("bootstrap:detectKind", () => detectInstallerKind());
 ipcMain.handle("bootstrap:reopenPicker", () => { bootstrap.reopenPlatformPicker(); });
 
+function buildMenu(): void {
+  const isMac = process.platform === "darwin";
+  const template: Electron.MenuItemConstructorOptions[] = [
+    ...(isMac ? [{ role: "appMenu" as const }] : []),
+    { role: "editMenu" },
+    {
+      label: "View",
+      submenu: [
+        { role: "reload" },
+        { role: "forceReload" },
+        { role: "toggleDevTools" },
+        { type: "separator" },
+        { role: "resetZoom" },
+        { role: "zoomIn" },
+        { role: "zoomOut" },
+        { type: "separator" },
+        { role: "togglefullscreen" },
+      ],
+    },
+    { role: "windowMenu" },
+    {
+      role: "help",
+      submenu: [
+        {
+          label: "Open ez-rapp on GitHub",
+          click: () => void shell.openExternal("https://github.com/kody-w/ez-rapp"),
+        },
+        {
+          label: "Open brainstem in browser",
+          click: () => void shell.openExternal(BRAINSTEM_URL),
+        },
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
+}
+
 app.whenReady().then(async () => {
+  buildMenu();
   createWindow();
   void ensureRunningAndReady();
   app.on("activate", () => { if (BrowserWindow.getAllWindows().length === 0) createWindow(); });
