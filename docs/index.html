@@ -312,7 +312,7 @@
       const state = document.getElementById("release-state");
       const dl = document.getElementById("downloads");
       try {
-        const res = await fetch("https://api.github.com/repos/kody-w/ez-rapp/releases/latest");
+        const res = await fetch("https://raw.githubusercontent.com/kody-w/ez-rapp/main/docs/state/latest_release.json" /* Article XXIV: CI snapshot in releases/latest shape, never the API */);
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
         const r = await res.json();
         const assets = Array.isArray(r.assets) ? r.assets : [];
