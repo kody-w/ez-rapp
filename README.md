@@ -1,5 +1,9 @@
 # ez-rapp
 
+<!-- rapp1:network-header:start -->
+[![RAPP/1](https://kody-w.github.io/rapp-hive-public/portfolio/badges/ez-rapp.svg)](https://github.com/kody-w/rapp-hive-public/blob/main/portfolio/repos/ez-rapp.md) · **New to RAPP?** [Start here: get your Brainstem →](https://github.com/kody-w/rapp-installer#start-here)
+<!-- rapp1:network-header:end -->
+
 > **Plain-English AI on your laptop. No terminal. No API keys. Just download and chat.**
 
 ez-rapp is the friendliest way to run a local AI on your computer. You don't need to know Python, you don't need to copy-paste commands, you don't need an OpenAI key. If you already have **GitHub Copilot** ([sign up — $10/mo or free for students/OSS](https://github.com/github-copilot/signup)), you're done.
